@@ -1,0 +1,36 @@
+services:
+  db:
+    image: mysql:8.0
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: equipment_maint
+      MYSQL_USER: equip
+      MYSQL_PASSWORD: equip123
+    healthcheck:
+      test:
+        ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot123"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - db_data:/var/lib/mysql
+
+  app:
+    build: .
+    environment:
+      DB_URL: "jdbc:mysql://db:3306/equipment_maint?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai"
+      DB_USER: equip
+      DB_PASSWORD: equip123
+      APP_PORT: "7654"
+      JWT_SECRET: "equipment-maintenance-admin-dev-secret-change-me-please-32bytes"
+      ADMIN_USERNAME: "admin"
+      ADMIN_PASSWORD: "admin123"
+    ports:
+      - "7654:7654"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db_data:
