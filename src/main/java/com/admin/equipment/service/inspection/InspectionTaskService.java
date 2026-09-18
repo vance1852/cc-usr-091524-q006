@@ -6,6 +6,7 @@ import com.admin.equipment.model.inspection.*;
 import com.admin.equipment.repo.EquipmentRepository;
 import com.admin.equipment.repo.WorkOrderRepository;
 import com.admin.equipment.repo.inspection.*;
+import com.admin.equipment.service.attachment.AttachmentService;
 import com.admin.equipment.service.inspection.InspectionTemplateService.JudgeResult;
 import com.admin.equipment.service.inspection.RoutePlanningService.RoutePoint;
 import com.admin.equipment.service.inspection.RoutePlanningService.RouteResult;
@@ -31,6 +32,7 @@ public class InspectionTaskService {
     private final WorkOrderRepository workOrderRepo;
     private final InspectionTemplateService templateService;
     private final InspectionPlanService planService;
+    private final AttachmentService attachmentService;
 
     public InspectionTaskService(InspectionTaskRepository taskRepo,
                                  InspectionTaskPointRepository taskPointRepo,
@@ -43,7 +45,8 @@ public class InspectionTaskService {
                                  EquipmentRepository equipmentRepo,
                                  WorkOrderRepository workOrderRepo,
                                  InspectionTemplateService templateService,
-                                 InspectionPlanService planService) {
+                                 InspectionPlanService planService,
+                                 AttachmentService attachmentService) {
         this.taskRepo = taskRepo;
         this.taskPointRepo = taskPointRepo;
         this.recordRepo = recordRepo;
@@ -56,6 +59,7 @@ public class InspectionTaskService {
         this.workOrderRepo = workOrderRepo;
         this.templateService = templateService;
         this.planService = planService;
+        this.attachmentService = attachmentService;
     }
 
     public List<InspectionTask> listAll() {
@@ -500,7 +504,10 @@ public class InspectionTaskService {
         wo.setDescription("来源：巡检异常\n异常ID:" + ab.getId() + "\n任务ID:" + ab.getTaskId() + "\n" + ab.getDescription());
         wo.setAssignee("");
         wo.setStatus("open");
-        return workOrderRepo.save(wo);
+        WorkOrder saved = workOrderRepo.save(wo);
+        // 异常转工单：保留已有证据的引用（回填 workOrderId），不复制物理文件
+        attachmentService.linkToWorkOrder(ab.getId(), saved.getId());
+        return saved;
     }
 
     private int countCompletedPoints(Long taskId) {

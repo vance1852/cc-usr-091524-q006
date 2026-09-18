@@ -26,11 +26,16 @@ services:
       JWT_SECRET: "equipment-maintenance-admin-dev-secret-change-me-please-32bytes"
       ADMIN_USERNAME: "admin"
       ADMIN_PASSWORD: "admin123"
+      ATTACHMENT_STORAGE_DIR: "/app/data/attachments"
+      ATTACHMENT_SESSION_TTL_HOURS: "24"
     ports:
       - "7654:7654"
+    volumes:
+      - attachment_data:/app/data
     depends_on:
       db:
         condition: service_healthy
 
 volumes:
   db_data:
+  attachment_data:

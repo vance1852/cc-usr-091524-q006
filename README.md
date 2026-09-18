@@ -30,6 +30,9 @@ MySQL 就绪后，应用通过 JPA 自动建表（ddl-auto=update）并在启动
 - 维保工单查询、创建、状态流转（`/api/work-orders`，完成时记录关闭时间）
 - 巡检点、巡检模板与周期计划维护（`/api/inspection/points`、`/api/inspection/templates`、`/api/inspection/plans`）
 - 巡检任务生成与执行、异常转工单、复检闭环和路线比较（`/api/inspection/tasks`）
+- 异常受控证据附件：图片/音频/文档分片上传、断点续传、SHA-256+大小+类型三重校验后绑定、
+  JWT 鉴权下载与 HTTP Range 范围读取、完整性状态与来源追溯、引用保护删除与过期分片清理
+  （`/api/inspection/attachments`、`/api/inspection/abnormalities/{id}/attachments`）
 - 巡检完成率、设备历史与执行轨迹查询（`/api/inspection/stats`）
 - 仪表盘统计（`/api/dashboard/stats`）
 - 健康检查（`/api/health`）

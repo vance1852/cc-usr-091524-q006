@@ -1,0 +1,23 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:attachment-test;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+    open-in-view: false
+
+app:
+  jwt-secret: test-secret-test-secret-test-secret-32bytes!!
+  admin-username: admin
+  admin-password: admin123
+  attachment:
+    storage-dir: ./target/test-attachments
+    max-size-bytes: 104857600
+    max-chunk-size-bytes: 1048576
+    session-ttl-hours: 24
