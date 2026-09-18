@@ -22,3 +22,16 @@ app:
   jwt-secret: ${JWT_SECRET:equipment-maintenance-admin-dev-secret-change-me-please-32bytes}
   admin-username: ${ADMIN_USERNAME:admin}
   admin-password: ${ADMIN_PASSWORD:admin123}
+  attachment:
+    # 受控附件根目录：文件内容落盘位置，MySQL 只保存元数据
+    dir: ${ATTACHMENT_DIR:./data/attachments}
+    # 单文件最大字节数（默认 100MB）
+    max-size-bytes: ${ATTACHMENT_MAX_SIZE_BYTES:104857600}
+    # 分片上传的单片字节数上限（默认 5MB）
+    chunk-size-bytes: ${ATTACHMENT_CHUNK_SIZE_BYTES:5242880}
+    # 上传会话有效期（小时），过期的临时分片可被清理
+    session-expire-hours: ${ATTACHMENT_SESSION_EXPIRE_HOURS:24}
+    # 过期/失败临时分片的定时清理间隔（毫秒）
+    cleanup-interval-ms: ${ATTACHMENT_CLEANUP_INTERVAL_MS:3600000}
+    # 允许上传的媒体类型白名单：图片、音频、文档
+    allowed-media-types: ${ATTACHMENT_ALLOWED_MEDIA_TYPES:image/jpeg,image/png,image/gif,image/webp,audio/mpeg,audio/wav,audio/x-wav,audio/ogg,audio/mp4,audio/webm,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain,text/csv}

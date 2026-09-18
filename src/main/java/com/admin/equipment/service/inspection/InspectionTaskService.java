@@ -6,6 +6,7 @@ import com.admin.equipment.model.inspection.*;
 import com.admin.equipment.repo.EquipmentRepository;
 import com.admin.equipment.repo.WorkOrderRepository;
 import com.admin.equipment.repo.inspection.*;
+import com.admin.equipment.service.attachment.AttachmentService;
 import com.admin.equipment.service.inspection.InspectionTemplateService.JudgeResult;
 import com.admin.equipment.service.inspection.RoutePlanningService.RoutePoint;
 import com.admin.equipment.service.inspection.RoutePlanningService.RouteResult;
@@ -31,6 +32,7 @@ public class InspectionTaskService {
     private final WorkOrderRepository workOrderRepo;
     private final InspectionTemplateService templateService;
     private final InspectionPlanService planService;
+    private final AttachmentService attachmentService;
 
     public InspectionTaskService(InspectionTaskRepository taskRepo,
                                  InspectionTaskPointRepository taskPointRepo,
@@ -43,7 +45,8 @@ public class InspectionTaskService {
                                  EquipmentRepository equipmentRepo,
                                  WorkOrderRepository workOrderRepo,
                                  InspectionTemplateService templateService,
-                                 InspectionPlanService planService) {
+                                 InspectionPlanService planService,
+                                 AttachmentService attachmentService) {
         this.taskRepo = taskRepo;
         this.taskPointRepo = taskPointRepo;
         this.recordRepo = recordRepo;
@@ -56,6 +59,7 @@ public class InspectionTaskService {
         this.workOrderRepo = workOrderRepo;
         this.templateService = templateService;
         this.planService = planService;
+        this.attachmentService = attachmentService;
     }
 
     public List<InspectionTask> listAll() {
@@ -382,6 +386,18 @@ public class InspectionTaskService {
     @Transactional
     public InspectionAbnormality reportAbnormality(Long taskId, Long taskPointId, Long recordId, Long equipmentId,
                                                     String title, String description, String severity, String workOrderType) {
+        return reportAbnormality(taskId, taskPointId, recordId, equipmentId, title, description,
+                severity, workOrderType, null, null);
+    }
+
+    /**
+     * 上报异常，可同时绑定已完成的证据附件（图片/音频/文档）。
+     * 附件绑定先于工单转换，保证转出的工单立即持有证据引用。
+     */
+    @Transactional
+    public InspectionAbnormality reportAbnormality(Long taskId, Long taskPointId, Long recordId, Long equipmentId,
+                                                    String title, String description, String severity,
+                                                    String workOrderType, List<Long> attachmentIds, String operator) {
         InspectionTask task = taskRepo.findById(taskId)
                 .orElseThrow(() -> new IllegalArgumentException("任务不存在"));
         InspectionTaskPoint tp = null;
@@ -411,6 +427,13 @@ public class InspectionTaskService {
         ab.setStatus("reported");
         ab.setWorkOrderType(validWOType(workOrderType));
         InspectionAbnormality saved = abnormalityRepo.save(ab);
+        if (attachmentIds != null) {
+            for (Long attachmentId : attachmentIds) {
+                if (attachmentId == null) continue;
+                // 只有校验和、声明大小与允许类型都核验通过的附件才能绑定
+                attachmentService.bindToAbnormality(attachmentId, saved.getId(), operator);
+            }
+        }
         WorkOrder wo = autoConvertToWorkOrder(saved, eq);
         if (wo != null) {
             saved.setWorkOrderId(wo.getId());
@@ -500,7 +523,21 @@ public class InspectionTaskService {
         wo.setDescription("来源：巡检异常\n异常ID:" + ab.getId() + "\n任务ID:" + ab.getTaskId() + "\n" + ab.getDescription());
         wo.setAssignee("");
         wo.setStatus("open");
-        return workOrderRepo.save(wo);
+        WorkOrder savedWo = workOrderRepo.save(wo);
+        // 异常转工单：保留附件引用（只插入指针，不复制文件），工单即可引用证据
+        List<Long> evidenceIds = attachmentService.linkAbnormalityAttachmentsToWorkOrder(
+                ab.getId(), savedWo.getId(), "system");
+        if (!evidenceIds.isEmpty()) {
+            StringBuilder sb = new StringBuilder(savedWo.getDescription());
+            sb.append("\n证据附件ID:");
+            for (Long eid : evidenceIds) {
+                sb.append(' ').append(eid);
+            }
+            String desc = sb.toString();
+            savedWo.setDescription(desc.length() > 500 ? desc.substring(0, 500) : desc);
+            savedWo = workOrderRepo.save(savedWo);
+        }
+        return savedWo;
     }
 
     private int countCompletedPoints(Long taskId) {

@@ -3,6 +3,7 @@ package com.admin.equipment.web;
 import com.admin.equipment.model.WorkOrder;
 import com.admin.equipment.repo.EquipmentRepository;
 import com.admin.equipment.repo.WorkOrderRepository;
+import com.admin.equipment.service.attachment.AttachmentService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,10 +23,13 @@ public class WorkOrderController {
 
     private final WorkOrderRepository repo;
     private final EquipmentRepository equipmentRepo;
+    private final AttachmentService attachmentService;
 
-    public WorkOrderController(WorkOrderRepository repo, EquipmentRepository equipmentRepo) {
+    public WorkOrderController(WorkOrderRepository repo, EquipmentRepository equipmentRepo,
+                               AttachmentService attachmentService) {
         this.repo = repo;
         this.equipmentRepo = equipmentRepo;
+        this.attachmentService = attachmentService;
     }
 
     public record WorkOrderRequest(Long equipmentId, String title, String type, String priority,
@@ -62,6 +66,18 @@ public class WorkOrderController {
         w.setAssignee(req.assignee() == null ? "" : req.assignee());
         w.setStatus("open");
         return ResponseEntity.status(HttpStatus.CREATED).body(repo.save(w));
+    }
+
+    /** 工单引用的证据附件（异常转工单时保留的引用），含完整性状态与来源。 */
+    @GetMapping("/{id}/attachments")
+    public ResponseEntity<?> listAttachments(@PathVariable Long id) {
+        if (!repo.existsById(id)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("detail", "工单不存在"));
+        }
+        return ResponseEntity.ok(Map.of(
+                "workOrderId", id,
+                "evidences", attachmentService.listEvidenceForWorkOrder(id)
+        ));
     }
 
     @PatchMapping("/{id}/status")

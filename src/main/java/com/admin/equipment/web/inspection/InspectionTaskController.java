@@ -1,8 +1,11 @@
 package com.admin.equipment.web.inspection;
 
+import com.admin.equipment.model.AppUser;
 import com.admin.equipment.model.WorkOrder;
 import com.admin.equipment.model.inspection.*;
+import com.admin.equipment.service.attachment.AttachmentService;
 import com.admin.equipment.service.inspection.InspectionTaskService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -32,7 +35,8 @@ public class InspectionTaskController {
     public record SkipRequest(Long taskId, Long taskPointId, String reason) {}
 
     public record ReportAbnormalRequest(Long taskId, Long taskPointId, Long recordId, Long equipmentId,
-                                         String title, String description, String severity, String workOrderType) {}
+                                         String title, String description, String severity, String workOrderType,
+                                         List<Long> attachmentIds) {}
 
     public record RecheckRequest(Long abnormalityId, String result, String recheckBy) {}
 
@@ -162,15 +166,20 @@ public class InspectionTaskController {
     }
 
     @PostMapping("/abnormality/report")
-    public ResponseEntity<?> reportAbnormality(@RequestBody ReportAbnormalRequest req) {
+    public ResponseEntity<?> reportAbnormality(@RequestBody ReportAbnormalRequest req,
+                                               HttpServletRequest request) {
         try {
             if (req.taskId() == null) {
                 return ResponseEntity.unprocessableEntity().body(Map.of("detail", "任务ID必填"));
             }
+            AppUser user = (AppUser) request.getAttribute("currentUser");
+            String operator = user != null ? user.getDisplayName() : "";
             InspectionAbnormality ab = service.reportAbnormality(req.taskId(), req.taskPointId(),
                     req.recordId(), req.equipmentId(), req.title(), req.description(),
-                    req.severity(), req.workOrderType());
+                    req.severity(), req.workOrderType(), req.attachmentIds(), operator);
             return ResponseEntity.status(HttpStatus.CREATED).body(ab);
+        } catch (AttachmentService.NotFoundException | AttachmentService.StateException e) {
+            return ResponseEntity.unprocessableEntity().body(Map.of("detail", e.getMessage()));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.unprocessableEntity().body(Map.of("detail", e.getMessage()));
         }
